@@ -52,6 +52,7 @@ app.post("/auth", async (req, res) => {
 //   User.create({ email, name });
 //   res.send("User created");
 // });
+//
 
 app.get("/users", async (req, res) => {
   try {
