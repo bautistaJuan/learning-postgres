@@ -67,6 +67,26 @@ app.post("/auth/token", async (req, res) => {
     res.status(401).json({ error: "No autorizado" });
   }
 });
+// Authorization
+function authMidleware(req, res, next) {
+  const token = req.headers.authorization.split(" ")[1];
+  try {
+    const data = jwt.verify(token, SECRET);
+    req._user = data; // guardo la data en req._user para que esté disponible en la siguiente función a ejecutar.
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: "No autorizado" });
+  }
+}
+
+app.get("/me", authMidleware, async (req, res) => {
+  console.log(req._user.id); // La data del usuario que nos pasa el midleware anterior.
+
+  const user = await User.findByPk(req._user.id);
+  console.log({ user });
+
+  res.json(user);
+});
 
 app.listen(port, () => {
   console.log("Todo ok", port);
