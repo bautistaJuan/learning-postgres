@@ -1,14 +1,12 @@
 import { DataTypes, Model } from "sequelize";
-import { sequelize } from "./index";
-
-// id: DataTypes.INTEGER,
-// password: DataTypes.STRING,
+import { sequelize } from "./sequelize";
+// import { ProductsInterface } from "../services/createProducts";
 class User extends Model {}
 User.init(
   {
     email: DataTypes.STRING,
     name: DataTypes.STRING,
-    birthdate: DataTypes.DATE,
+    birthdate: DataTypes.STRING,
   },
   {
     sequelize,

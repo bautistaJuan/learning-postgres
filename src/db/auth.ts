@@ -1,6 +1,6 @@
 import { DataTypes, Model } from "sequelize";
-import { sequelize } from "./index";
-
+import { sequelize } from "./sequelize";
+// import { ProductsInterface } from "../services/createProducts";
 class Auth extends Model {}
 Auth.init(
   {

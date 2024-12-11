@@ -1,40 +1,40 @@
-import { User } from "../src/db/user";
+import { Auth } from "./db/auth";
 const colors = require("colors");
 
-interface UserInterface {
+interface ProductInterface {
   name: string;
-  email: string;
-  password: string;
-  birthDay: Date;
+  description: string;
+  category: string;
+  price: string;
 }
 
-async function getUsers() {
+async function getAllProducts() {
   try {
-    const usersData = await User.findAll(); // Para traer todos los usuarios
-    const values = usersData.map(user => {
-      return user.dataValues; // Devuelve solamente los usuarios
+    const productData = await Product.findAll(); // Para traer todos los productos
+    const values = productData.map(product => {
+      return product.dataValues; // Devuelve solamente los productos
     });
-    console.log(colors.green("Users data:", values));
+    console.log(colors.green("Product data:", values));
 
     return values;
   } catch (error) {
-    throw new Error("Error getting users from db");
+    throw new Error("Error getting products from db");
   }
 }
 
-async function createUser({ name, email, password, birthDay }: UserInterface) {
+async function createProduct({ name, price }: ProductInterface) {
   try {
-    const newUser = await User.create({
+    const newProduct = await Product.create({
       name: name,
-      password: password,
-      birthDay: birthDay,
-      email: email,
+      price: price,
     });
-    console.log(colors.green("User created successfully", newUser.toJSON()));
+    console.log(
+      colors.green("Product created successfully", newProduct.toJSON())
+    );
     return true;
   } catch (error) {
     throw new Error(error);
   }
 }
 
-export { getUsers, createUser };
+export { getAllProducts, createProduct };

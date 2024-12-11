@@ -1,67 +1,50 @@
 import * as express from "express";
 import * as cors from "cors";
-import { sequelize } from "./db";
-import { User } from "./db/user";
-import { Auth } from "./db/auth";
-import { getUsers, createUser } from "./services";
-const colors = require("colors");
 import * as crypto from "crypto";
+import { sequelize } from "./db/sequelize";
+import { User } from "./db/users";
+import { Auth } from "./db/auth";
+
+// sequelize.sync({ force: true }).then(res => {
+//   console.log(res);
+// });
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+const port = process.env.PORT || 3000;
 
-// sequelize.sync({ alter: true }).then(res => {
-//   console.log(res);
-// });
+const getSHA256ofString = function (text: string) {
+  return crypto.createHash("sha256").update(text).digest("hex");
+};
 
-function hashPassword(password: string) {
-  const hash = crypto.createHash("sha256");
-  hash.update(password);
-  return hash.digest("hex");
-}
+// signup
 app.post("/auth", async (req, res) => {
+  const { name, email, password, birthdate } = req.body;
+
+  // User
   const [user, created] = await User.findOrCreate({
-    where: {
-      email: req.body.email,
-    },
+    where: { email: email },
     defaults: {
-      email: req.body.email,
-      name: req.body.name,
-      birthdate: req.body.birthdate,
+      email,
+      name,
+      birthdate,
     },
   });
 
+  // Auth
   const [auth, authCreated] = await Auth.findOrCreate({
-    where: {
-      id: user.get("id"),
-    },
+    where: { user_id: user.getDataValue("id") },
     defaults: {
-      email: req.body.email,
-      password: hashPassword(req.body.password),
-      user_id: user.get("id"),
+      email,
+      password: getSHA256ofString(password),
+      user_id: user.getDataValue("id"),
     },
   });
-
-  console.log({ user, created });
+  console.log({ auth, authCreated });
   res.json(user);
 });
 
-// app.post("/users", async (req, res) => {
-//   const { email, name } = req.body;
-//   User.create({ email, name });
-//   res.send("User created");
-// });
-//
-
-app.get("/users", async (req, res) => {
-  try {
-    const users = await getUsers();
-    res.send(users);
-  } catch (error) {
-    res.status(400).send("Error getting users");
-  }
-});
-app.listen(3000, () => {
-  console.log("Example app listening on port 3000!");
+app.listen(port, () => {
+  console.log("Todo ok", port);
 });
