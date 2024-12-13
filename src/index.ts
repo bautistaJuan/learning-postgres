@@ -1,10 +1,10 @@
 import * as express from "express";
 import * as cors from "cors";
-import * as crypto from "crypto";
 import { sequelize } from "./db/sequelize";
-import { User } from "./db/users";
-import { Auth } from "./db/auth";
+import { Product, User, Auth } from "./db/models";
 import * as jwt from "jsonwebtoken";
+import * as crypto from "crypto";
+
 // sequelize.sync({ force: true }).then(res => {
 //   console.log(res);
 // });
@@ -22,7 +22,7 @@ const getSHA256ofString = function (text: string) {
 
 // signup
 app.post("/auth", async (req, res) => {
-  const { name, email, password, birthdate } = req.body;
+  const { name, email, password } = req.body;
 
   // User
   const [user, created] = await User.findOrCreate({
@@ -30,21 +30,23 @@ app.post("/auth", async (req, res) => {
     defaults: {
       email,
       name,
-      birthdate,
     },
   });
 
   // Auth
   const [auth, authCreated] = await Auth.findOrCreate({
-    where: { user_id: user.getDataValue("id") },
+    where: { user_id: user.get("id") },
     defaults: {
       email,
       password: getSHA256ofString(password),
-      user_id: user.getDataValue("id"),
+      user_id: user.get("id"),
     },
   });
   console.log({ auth, authCreated });
-  res.json(user);
+  res.json({
+    message: "Usuario creado",
+    id: user.get("id"),
+  });
 });
 
 // Signin
@@ -69,6 +71,7 @@ app.post("/auth/token", async (req, res) => {
 });
 // Authorization
 function authMidleware(req, res, next) {
+  // el header siempre tiene que tener el authorization para poder autenticar aun usuario.
   const token = req.headers.authorization.split(" ")[1];
   try {
     const data = jwt.verify(token, SECRET);
@@ -81,12 +84,50 @@ function authMidleware(req, res, next) {
 
 app.get("/me", authMidleware, async (req, res) => {
   console.log(req._user.id); // La data del usuario que nos pasa el midleware anterior.
-
   const user = await User.findByPk(req._user.id);
-  console.log({ user });
-
   res.json(user);
 });
+
+app.post("/products", authMidleware, async (req, res) => {
+  const product = await Product.create({
+    ...req.body,
+    userId: req._user.id,
+  });
+  res.json({
+    message: "Producto creado",
+    product,
+  });
+});
+app.get("/me/products", authMidleware, async (req, res) => {
+  const products = await Product.findAll({
+    where: {
+      userId: req._user.id,
+    },
+    include: [User],
+  });
+  res.json(products);
+});
+
+// app.get("/test", async (req, res) => {
+// creamos un usuario y un producto
+// const user = await User.create({
+//   name: "Juan",
+// });
+// const product = await Product.create({
+//   title: "Mate",
+//   price: 600,
+//   userId: "1028744333384810497" o  userId: user.get("id"),
+// });
+
+// Traemos todos los productos que pertenecen al usuario con id 1028744333384810497
+//   const product = await Product.findAll({
+
+//   });
+//   res.json(pr    where: {
+//       userId: "1028744333384810497" o  userId: user.get("id"),
+//     },
+//     include: [User],oduct);
+// });
 
 app.listen(port, () => {
   console.log("Todo ok", port);

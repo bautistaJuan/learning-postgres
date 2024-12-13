@@ -1,4 +1,4 @@
-import { Auth } from "./db/auth";
+import { Product } from "../db/product";
 const colors = require("colors");
 
 interface ProductInterface {
