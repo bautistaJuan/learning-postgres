@@ -1,5 +1,5 @@
 {
-  "name": "postgres-1",
+  "name": "algolia",
   "version": "1.0.0",
   "license": "MIT",
   "scripts": {
@@ -7,13 +7,11 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@types/jsonwebtoken": "^9.0.7",
-    "jsonwebtoken": "^9.0.2",
+    "algoliasearch": "5",
     "sequelize-cockroachdb": "^6.0.5",
     "typescript": "^5.6.2"
   },
   "devDependencies": {
-    "colors": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",

@@ -1,133 +1,92 @@
 import * as express from "express";
 import * as cors from "cors";
+import { Comercio } from "./db/comercios";
 import { sequelize } from "./db/sequelize";
-import { Product, User, Auth } from "./db/models";
-import * as jwt from "jsonwebtoken";
-import * as crypto from "crypto";
-
-// sequelize.sync({ force: true }).then(res => {
-//   console.log(res);
-// });
-
+import { clientWrite, clientSearch } from "./lib/algolia";
 const app = express();
 app.use(express.json());
 app.use(cors());
 const port = process.env.PORT || 3000;
 
-const SECRET = "asd32asd32a111asddd33awd";
+// sequelize.sync({ force: true }).then(res => {
+//   console.log(res);
+// });
+var indexName = "comercios";
+app.post("/comercios", async (req, res) => {
+  let newComercioData = req.body;
+  const newComercio = await Comercio.create(newComercioData);
+  const algoliaResponse = await clientWrite.saveObject({
+    indexName,
+    body: {
+      objectID: newComercio.get("id"),
+      nombre: newComercio.get("nombre"),
+      _geoloc: {
+        lat: newComercio.get("lat"),
+        lng: newComercio.get("lng"),
+      },
+    },
+  });
 
-const getSHA256ofString = function (text: string) {
-  return crypto.createHash("sha256").update(text).digest("hex");
+  console.log(algoliaResponse);
+  res.json(newComercio);
+});
+
+app.get("/comercios", async (req, res) => {
+  const allComercios = await Comercio.findAll();
+
+  res.json(allComercios);
+});
+app.get("/comercios/:id", async (req, res) => {
+  const id = req.params.id;
+  const searchComercios = await Comercio.findByPk(id);
+  res.json(searchComercios);
+});
+
+const bodyToRecord = (body, id?: number) => {
+  const updateRecord = {} as any;
+
+  if (body.nombre) {
+    updateRecord.nombre = body.nombre;
+  }
+  if (body.rubro) {
+    updateRecord.rubro = body.rubro;
+  }
+  if (body.lat && body.lng) {
+    updateRecord._geoloc = {
+      lat: body.lat,
+      lng: body.lng,
+    };
+  }
+  // if (id) {
+  //   updateRecord.objectID = id;
+  // }
+  return updateRecord;
 };
 
-// signup
-app.post("/auth", async (req, res) => {
-  const { name, email, password } = req.body;
-
-  // User
-  const [user, created] = await User.findOrCreate({
-    where: { email: email },
-    defaults: {
-      email,
-      name,
-    },
-  });
-
-  // Auth
-  const [auth, authCreated] = await Auth.findOrCreate({
-    where: { user_id: user.get("id") },
-    defaults: {
-      email,
-      password: getSHA256ofString(password),
-      user_id: user.get("id"),
-    },
-  });
-  console.log({ auth, authCreated });
-  res.json({
-    message: "Usuario creado",
-    id: user.get("id"),
-  });
-});
-
-// Signin
-app.post("/auth/token", async (req, res) => {
-  const { email, password } = req.body;
-  const passwordHasheado = getSHA256ofString(password);
-
-  const auth = await Auth.findOne({
+app.put("/comercios/:id", async (req, res) => {
+  const id = req.params.id;
+  const nombre = req.body.nombre;
+  if (!id || !nombre) res.json({ message: "Update data to sends" });
+  const updateComercios = await Comercio.update(req.body, {
     where: {
-      email,
-      password: passwordHasheado,
+      id: id,
     },
   });
-
-  const token = jwt.sign({ id: auth.getDataValue("user_id") }, SECRET);
-
-  if (auth) {
-    res.json({ token });
-  } else {
-    res.status(401).json({ error: "No autorizado" });
-  }
-});
-// Authorization
-function authMidleware(req, res, next) {
-  // el header siempre tiene que tener el authorization para poder autenticar aun usuario.
-  const token = req.headers.authorization.split(" ")[1];
-  try {
-    const data = jwt.verify(token, SECRET);
-    req._user = data; // guardo la data en req._user para que esté disponible en la siguiente función a ejecutar.
-    next();
-  } catch (e) {
-    return res.status(401).json({ error: "No autorizado" });
-  }
-}
-
-app.get("/me", authMidleware, async (req, res) => {
-  console.log(req._user.id); // La data del usuario que nos pasa el midleware anterior.
-  const user = await User.findByPk(req._user.id);
-  res.json(user);
-});
-
-app.post("/products", authMidleware, async (req, res) => {
-  const product = await Product.create({
-    ...req.body,
-    userId: req._user.id,
+  const updateRecordAtributes = bodyToRecord(req.body, id);
+  const algoliaResponse = await clientWrite.partialUpdateObject({
+    indexName,
+    objectID: id,
+    attributesToUpdate: updateRecordAtributes,
   });
-  res.json({
-    message: "Producto creado",
-    product,
-  });
-});
-app.get("/me/products", authMidleware, async (req, res) => {
-  const products = await Product.findAll({
-    where: {
-      userId: req._user.id,
-    },
-    include: [User],
-  });
-  res.json(products);
+  console.log(algoliaResponse);
+  res.json(updateComercios);
 });
 
-// app.get("/test", async (req, res) => {
-// creamos un usuario y un producto
-// const user = await User.create({
-//   name: "Juan",
-// });
-// const product = await Product.create({
-//   title: "Mate",
-//   price: 600,
-//   userId: "1028744333384810497" o  userId: user.get("id"),
-// });
-
-// Traemos todos los productos que pertenecen al usuario con id 1028744333384810497
-//   const product = await Product.findAll({
-
+// app.get("/test", (req, res) => {
+//   res.json({
+//     message: "Hello World",
 //   });
-//   res.json(pr    where: {
-//       userId: "1028744333384810497" o  userId: user.get("id"),
-//     },
-//     include: [User],oduct);
-// });
+// }); f
 
 app.listen(port, () => {
   console.log("Todo ok", port);
