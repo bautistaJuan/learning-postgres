@@ -2,7 +2,7 @@ import * as express from "express";
 import * as cors from "cors";
 import { Comercio } from "./db/comercios";
 import { sequelize } from "./db/sequelize";
-import { clientWrite, clientSearch } from "./lib/algolia";
+import { clientWrite, clientSearch } from "./lib/algolia"; // Uno tiene las credenciales para escribir y el otro para leer
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -11,10 +11,12 @@ const port = process.env.PORT || 3000;
 // sequelize.sync({ force: true }).then(res => {
 //   console.log(res);
 // });
-var indexName = "comercios";
+var indexName = "comercios"; // Nombre del índice en Algolia
 app.post("/comercios", async (req, res) => {
   let newComercioData = req.body;
+  // Esto va a la base de datos
   const newComercio = await Comercio.create(newComercioData);
+  // Y esto va a Algolia
   const algoliaResponse = await clientWrite.saveObject({
     indexName,
     body: {
@@ -34,14 +36,15 @@ app.post("/comercios", async (req, res) => {
 app.get("/comercios", async (req, res) => {
   const allComercios = await Comercio.findAll();
 
-  res.json(allComercios);
+  const listIndices = await clientSearch.listIndices();
+  res.json(listIndices);
 });
 app.get("/comercios/:id", async (req, res) => {
   const id = req.params.id;
   const searchComercios = await Comercio.findByPk(id);
   res.json(searchComercios);
 });
-
+// middleware
 const bodyToRecord = (body, id?: number) => {
   const updateRecord = {} as any;
 
