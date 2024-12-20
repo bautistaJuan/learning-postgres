@@ -12,6 +12,7 @@ const port = process.env.PORT || 3000;
 //   console.log(res);
 // });
 var indexName = "comercios"; // Nombre del índice en Algolia
+
 app.post("/comercios", async (req, res) => {
   let newComercioData = req.body;
   // Esto va a la base de datos
@@ -45,7 +46,7 @@ app.get("/comercios/:id", async (req, res) => {
   res.json(searchComercios);
 });
 // middleware
-const bodyToRecord = (body, id?: number) => {
+const bodyToRecord = (body, id?: string) => {
   const updateRecord = {} as any;
 
   if (body.nombre) {
@@ -85,11 +86,24 @@ app.put("/comercios/:id", async (req, res) => {
   res.json(updateComercios);
 });
 
-// app.get("/test", (req, res) => {
-//   res.json({
-//     message: "Hello World",
-//   });
-// }); f
+app.get("/comercios-cerca-de", async (req, res) => {
+  const { lat, lng } = req.query;
+
+  const result = await clientSearch.search({
+    requests: [
+      {
+        indexName: indexName,
+        aroundLatLng: [lat, lng].join(","),
+        aroundRadius: 10000,
+      },
+    ],
+  });
+
+  const hits = result.results[0]["hits"];
+  res.json(hits);
+});
+
+app.get("*", express.static(__dirname + "/public"));
 
 app.listen(port, () => {
   console.log("Todo ok", port);
